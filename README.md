@@ -1,5 +1,10 @@
 # Sports Betting Odds Sample Dataset (SharpAPI)
 
+[![license](https://img.shields.io/badge/license-CC%20BY%204.0-06b6d4)](https://creativecommons.org/licenses/by/4.0/)
+[![rows](https://img.shields.io/badge/rows-9%2C851-06b6d4)](#files)
+[![books](https://img.shields.io/badge/sportsbooks-20-06b6d4)](#files)
+[![source](https://img.shields.io/badge/source-sharpapi.io-06b6d4)](https://sharpapi.io)
+
 Real sportsbook odds snapshots from [SharpAPI](https://sharpapi.io), the real-time sports betting odds API. Free to use for research, coursework, backtesting experiments, and data journalism, with attribution (CC BY 4.0, see below).
 
 ## Files
