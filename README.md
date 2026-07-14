@@ -2,17 +2,17 @@
 
 [![license](https://img.shields.io/badge/license-CC%20BY%204.0-06b6d4)](https://creativecommons.org/licenses/by/4.0/)
 [![rows](https://img.shields.io/badge/rows-9%2C851-06b6d4)](#files)
-[![books](https://img.shields.io/badge/sportsbooks-20-06b6d4)](#files)
+[![sources](https://img.shields.io/badge/sources-23-06b6d4)](#files)
 [![source](https://img.shields.io/badge/source-sharpapi.io-06b6d4)](https://sharpapi.io)
 
-Real sportsbook odds snapshots from [SharpAPI](https://sharpapi.io), the real-time sports betting odds API. Free to use for research, coursework, backtesting experiments, and data journalism, with attribution (CC BY 4.0, see below).
+Real odds snapshots from [SharpAPI](https://sharpapi.io), the real-time sports betting odds API: 23 sources spanning sportsbooks, exchanges, and prediction markets. Free to use for research, coursework, backtesting experiments, and data journalism, with attribution (CC BY 4.0, see below).
 
 ## Files
 
 | File | Rows | What it is |
 |---|---|---|
-| `data/worldcup_2026_odds_snapshot.csv` | 6,178 | Full odds board for the 2026 FIFA World Cup, captured 2026-07-13 (semifinals week: Argentina vs England, France vs Spain). 20 sportsbooks, 99 market types, from moneylines and Asian handicaps to correct score and outrights. |
-| `data/mlb_odds_snapshot.csv` | 3,673 | Same-day MLB slate across the same books: moneylines, run lines, totals, and derivative markets. |
+| `data/worldcup_2026_odds_snapshot.csv` | 6,178 | Full odds board for the 2026 FIFA World Cup, captured 2026-07-13 (semifinals week: Argentina vs England, France vs Spain). 20 sources, 99 market types, from moneylines and Asian handicaps to correct score and outrights. |
+| `data/mlb_odds_snapshot.csv` | 3,673 | Same-day MLB slate across 14 of those sources: moneylines, run lines, totals, and derivative markets. |
 
 Both files share one schema: each row is one price on one selection at one sportsbook at capture time.
 
@@ -20,7 +20,7 @@ Both files share one schema: each row is one price on one selection at one sport
 
 | Column | Type | Description |
 |---|---|---|
-| `id` | string | Unique row id from the API |
+| `id` | string | Price record id from the API. Not unique across all rows; identify a price by `event_id` + `sportsbook` + `selection`. |
 | `sportsbook` | string | Book slug (draftkings, fanduel, pinnacle, novig, kalshi, ...) |
 | `event_id` | string | Stable event identifier, join key across books |
 | `sport` / `league` | string | e.g. soccer / fifa_-_world_cup |
@@ -56,7 +56,7 @@ ml <- subset(wc, market_type == "moneyline")
 aggregate(odds_decimal ~ selection, ml, max)
 ```
 
-Ideas: cross-book vig comparison, best-line analysis, implied-probability calibration against results, market-efficiency studies across 20 books, arbitrage detection exercises.
+Ideas: cross-book vig comparison, best-line analysis, implied-probability calibration against results, market-efficiency studies across 23 sources, arbitrage detection exercises.
 
 ## Want live or historical data?
 
@@ -76,7 +76,7 @@ BibTeX:
   author = {{SharpAPI}},
   year   = {2026},
   url    = {https://sharpapi.io},
-  note   = {2026 FIFA World Cup and MLB odds snapshots, 20 sportsbooks}
+  note   = {2026 FIFA World Cup and MLB odds snapshots, 23 sources}
 }
 ```
 
