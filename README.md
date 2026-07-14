@@ -12,27 +12,29 @@ Real odds snapshots from [SharpAPI](https://sharpapi.io), the real-time sports b
 | File | Rows | What it is |
 |---|---|---|
 | `data/worldcup_2026_odds_snapshot.csv` | 6,178 | Full odds board for the 2026 FIFA World Cup, captured 2026-07-13 (semifinals week: Argentina vs England, France vs Spain). 20 sources, 99 market types, from moneylines and Asian handicaps to correct score and outrights. |
-| `data/mlb_odds_snapshot.csv` | 3,673 | Same-day MLB slate across 14 of those sources: moneylines, run lines, totals, and derivative markets. |
+| `data/mlb_odds_snapshot.csv` | 3,673 | MLB during All-Star week, captured the same night across 14 of those sources. Mostly a futures board (World Series, pennant, playoff and division odds; MVP/Cy Young/Rookie of the Year; All-Star selection contracts) plus a small set of regular-season game, inning, and player-prop markets. |
 
-Both files share one schema: each row is one price on one selection at one sportsbook at capture time.
+Both files share one schema: each row is one price on one selection at one source at capture time.
+
+**Identifying a price / joining.** A single price is `event_id` + `sportsbook` + `market_type` + `selection` + `selection_type` + `line` (add `home_team` for Kalshi/Polymarket multi-entity contracts). About 46 World Cup rows (thescorebet team totals + one bovada market) are genuine duplicate-key rows with contradictory prices from an adapter fold, so de-duplicate on that key for vig analysis. Because `event_id` embeds each source's league slug, it is not a clean cross-book join key; to line-shop the same real event across books, match on teams + date rather than `event_id`. Prediction-market sources encode markets as yes/no questions, so `home_team` may hold the question or contract entity.
 
 ## Schema
 
 | Column | Type | Description |
 |---|---|---|
-| `id` | string | Price record id from the API. Not unique across all rows; identify a price by `event_id` + `sportsbook` + `selection`. |
+| `id` | string | Price record id from the API. Unique except 16 betrivers pairs (World Cup) where one id spans both teams of a team-total market. |
 | `sportsbook` | string | Book slug (draftkings, fanduel, pinnacle, novig, kalshi, ...) |
-| `event_id` | string | Stable event identifier, join key across books |
-| `sport` / `league` | string | e.g. soccer / fifa_-_world_cup |
+| `event_id` | string | Per-source event id (embeds the league slug); not a clean cross-book join key, see the note below |
+| `sport` / `league` | string | e.g. soccer / fifa_-_world_cup. `league` is mostly canonical but not uniform: 238 bovada WC rows use `fifa_world_cup_matches`, 83 saba MLB rows `mlb_american_league`, 8 bovada MLB award rows `mlb_awards` |
 | `home_team` / `away_team` | string | Event participants |
 | `market_type` | string | One of 99 market slugs (moneyline, asian_handicap, total_goals, ...) |
-| `selection` | string | The specific outcome priced |
-| `selection_type` | string | side, total, outright, ... |
+| `selection` | string | The specific outcome priced; for player props this is the player/entity, with the Over/Under side in `selection_type` |
+| `selection_type` | string | side, total, over, under, outright; needed together with `selection` to uniquely identify player-prop and total markets |
 | `odds_american` | int | American odds (+150, -110) |
 | `odds_decimal` | float | Decimal odds |
 | `odds_probability` | float | Implied probability (vig included) |
 | `line` | float or empty | Handicap/total line where applicable |
-| `event_start_time` | ISO 8601 | Scheduled start |
+| `event_start_time` | ISO 8601 | Scheduled start. For prediction-market rows this is the market close/expiry time, not kickoff |
 | `is_live` | bool | Whether the price was in-play at capture |
 | `timestamp` | ISO 8601 | Capture time of this price |
 
@@ -43,17 +45,26 @@ Python:
 ```python
 import pandas as pd
 wc = pd.read_csv("data/worldcup_2026_odds_snapshot.csv")
-ml = wc[wc.market_type == "moneyline"]
-best = ml.loc[ml.groupby(["event_id", "selection"]).odds_decimal.idxmax()]
-print(best[["selection", "sportsbook", "odds_american"]].head())
+
+# most-covered markets and sources
+print(wc["market_type"].value_counts().head())
+print(wc["sportsbook"].value_counts())
+
+# a price is unique on this key (add home_team for prediction-market contracts)
+key = ["event_id", "sportsbook", "market_type", "selection", "selection_type", "line"]
+print("duplicate-key rows (adapter fold):", wc.duplicated(key).sum())
+
+# best price offered on each distinct outcome, within each source's own event ids
+best = wc.loc[wc.groupby(key, dropna=False)["odds_decimal"].idxmax()]
+print(best[["sportsbook", "market_type", "selection", "odds_american"]].head())
 ```
 
 R:
 
 ```r
 wc <- read.csv("data/worldcup_2026_odds_snapshot.csv")
-ml <- subset(wc, market_type == "moneyline")
-aggregate(odds_decimal ~ selection, ml, max)
+head(sort(table(wc$market_type), decreasing = TRUE))   # market coverage
+head(sort(table(wc$sportsbook), decreasing = TRUE))     # source coverage
 ```
 
 Ideas: cross-book vig comparison, best-line analysis, implied-probability calibration against results, market-efficiency studies across 23 sources, arbitrage detection exercises.
