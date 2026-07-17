@@ -1,7 +1,7 @@
 # Sports Betting Odds Sample Dataset (SharpAPI)
 
 [![license](https://img.shields.io/badge/license-CC%20BY%204.0-06b6d4)](https://creativecommons.org/licenses/by/4.0/)
-[![rows](https://img.shields.io/badge/rows-9%2C851-06b6d4)](#files)
+[![rows](https://img.shields.io/badge/rows-9%2C805-06b6d4)](#files)
 [![sources](https://img.shields.io/badge/sources-23-06b6d4)](#files)
 [![source](https://img.shields.io/badge/source-sharpapi.io-06b6d4)](https://sharpapi.io)
 
@@ -11,12 +11,12 @@ Real odds snapshots from [SharpAPI](https://sharpapi.io), the real-time sports b
 
 | File | Rows | What it is |
 |---|---|---|
-| `data/worldcup_2026_odds_snapshot.csv` | 6,178 | Full odds board for the 2026 FIFA World Cup, captured 2026-07-13 (semifinals week: Argentina vs England, France vs Spain). 20 sources, 99 market types, from moneylines and Asian handicaps to correct score and outrights. |
+| `data/worldcup_2026_odds_snapshot.csv` | 6,132 | Full odds board for the 2026 FIFA World Cup, captured 2026-07-13 (semifinals week: Argentina vs England, France vs Spain). 20 sources, 99 market types, from moneylines and Asian handicaps to correct score and outrights. |
 | `data/mlb_odds_snapshot.csv` | 3,673 | MLB during All-Star week, captured the same night across 14 of those sources. Mostly a futures board (World Series, pennant, playoff and division odds; MVP/Cy Young/Rookie of the Year; All-Star selection contracts) plus a small set of regular-season game, inning, and player-prop markets. |
 
 Both files share one schema: each row is one price on one selection at one source at capture time.
 
-**Identifying a price / joining.** A single price is `event_id` + `sportsbook` + `market_type` + `selection` + `selection_type` + `line` (add `home_team` for Kalshi/Polymarket multi-entity contracts). About 46 World Cup rows (thescorebet team totals + one bovada market) are genuine duplicate-key rows with contradictory prices from an adapter fold, so de-duplicate on that key for vig analysis. Because `event_id` embeds each source's league slug, it is not a clean cross-book join key; to line-shop the same real event across books, match on teams + date rather than `event_id`. Prediction-market sources encode markets as yes/no questions, so `home_team` may hold the question or contract entity.
+**Identifying a price / joining.** A single price is `event_id` + `sportsbook` + `market_type` + `selection` + `selection_type` + `line` (add `home_team` for Kalshi/Polymarket multi-entity contracts). For the World Cup head-to-head matches, `event_id` is a clean cross-book join key — every source (bovada included) shares one id per match, so you can line-shop the same real event directly on `event_id`. Outright/futures and prediction-market rows use source-specific ids, as does most of the MLB file (a futures board), so join those on teams + market rather than `event_id`. Prediction-market sources encode markets as yes/no questions, so `home_team` may hold the question or contract entity.
 
 ## Schema
 
@@ -24,8 +24,8 @@ Both files share one schema: each row is one price on one selection at one sourc
 |---|---|---|
 | `id` | string | Price record id from the API. Unique except 16 betrivers pairs (World Cup) where one id spans both teams of a team-total market. |
 | `sportsbook` | string | Book slug (draftkings, fanduel, pinnacle, novig, kalshi, ...) |
-| `event_id` | string | Per-source event id (embeds the league slug); not a clean cross-book join key, see the note below |
-| `sport` / `league` | string | e.g. soccer / fifa_-_world_cup. `league` is mostly canonical but not uniform: 238 bovada WC rows use `fifa_world_cup_matches`, 83 saba MLB rows `mlb_american_league`, 8 bovada MLB award rows `mlb_awards` |
+| `event_id` | string | Event id. Clean cross-book join key for World Cup matches; source-specific for futures, prediction-market, and MLB rows — see the joining note above |
+| `sport` / `league` | string | e.g. soccer / fifa_-_world_cup. `league` is mostly canonical but not uniform: 83 saba MLB rows `mlb_american_league`, 8 bovada MLB award rows `mlb_awards` |
 | `home_team` / `away_team` | string | Event participants |
 | `market_type` | string | One of 99 market slugs (moneyline, asian_handicap, total_goals, ...) |
 | `selection` | string | The specific outcome priced; for player props this is the player/entity, with the Over/Under side in `selection_type` |
@@ -52,7 +52,7 @@ print(wc["sportsbook"].value_counts())
 
 # a price is unique on this key (add home_team for prediction-market contracts)
 key = ["event_id", "sportsbook", "market_type", "selection", "selection_type", "line"]
-print("duplicate-key rows (adapter fold):", wc.duplicated(key).sum())
+print("duplicate-key rows:", wc.duplicated(key).sum())   # 0 — the key is clean
 
 # best price offered on each distinct outcome, within each source's own event ids
 best = wc.loc[wc.groupby(key, dropna=False)["odds_decimal"].idxmax()]
